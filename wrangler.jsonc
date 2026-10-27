@@ -7,7 +7,7 @@
 		{
 			"binding": "DB",
 			"database_name": "email-worker",
-			"database_id": "00000000-0000-0000-0000-000000000000",
+			"database_id": "792bd564-5ad0-41f1-b3a2-03d147973fb2",
 			"migrations_dir": "migrations"
 		}
 	],

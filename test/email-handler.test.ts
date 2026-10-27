@@ -3,7 +3,7 @@ import PostalMime from "postal-mime";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AttachmentRow, EmailRow } from "../src/db/emails";
 import { handleEmail } from "../src/email/handler";
-import { buildMail, createMessage, queryAll, resetData } from "./helpers";
+import { buildMail, createMessage, queryAll, resetData, seedAttachment, seedEmail } from "./helpers";
 
 async function deliver(from: string, to: string, raw: string, rawSize?: number)
 {
@@ -115,5 +115,51 @@ describe("handleEmail", () =>
 		expect(state.rejected).toBe("message too large");
 		expect(await queryAll("SELECT id FROM emails")).toEqual([]);
 		expect((await env.BUCKET.list()).objects).toEqual([]);
+	});
+});
+
+describe("storage quota", () =>
+{
+	beforeEach(resetData);
+
+	it("rejects a mail that would push R2 usage above 9 GB", async () =>
+	{
+		await seedEmail({ size: 8_999_999_999 });
+
+		const state = await deliver("a@example.com", "me@example.org", buildMail());
+
+		expect(state.rejected).toBe("mailbox full");
+		expect(await queryAll("SELECT id FROM emails")).toHaveLength(1);
+		expect((await env.BUCKET.list()).objects).toEqual([]);
+	});
+
+	it("counts attachments in the usage", async () =>
+	{
+		const email = await seedEmail({ size: 100 });
+		await seedAttachment(email.id, { size: 8_999_999_999 });
+
+		const state = await deliver("a@example.com", "me@example.org", buildMail());
+
+		expect(state.rejected).toBe("mailbox full");
+	});
+
+	it("accepts mails while usage stays below the limit", async () =>
+	{
+		await seedEmail({ size: 1_000_000_000 });
+
+		const state = await deliver("a@example.com", "me@example.org", buildMail());
+
+		expect(state.rejected).toBeNull();
+		expect(await queryAll("SELECT id FROM emails")).toHaveLength(2);
+	});
+
+	it("accepts mails again once space is freed", async () =>
+	{
+		const full = await seedEmail({ size: 8_999_999_999 });
+		expect((await deliver("a@example.com", "me@example.org", buildMail())).rejected).toBe("mailbox full");
+
+		await env.DB.prepare("DELETE FROM emails WHERE id = ?").bind(full.id).run();
+
+		expect((await deliver("a@example.com", "me@example.org", buildMail())).rejected).toBeNull();
 	});
 });

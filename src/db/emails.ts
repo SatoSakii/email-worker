@@ -90,6 +90,13 @@ export function toFtsQuery(q: string): string | null
 	return terms.map((term) => `"${term.replaceAll("\"", "\"\"")}"`).join(" ");
 }
 
+export async function storageUsed(db: D1Database): Promise<number>
+{
+	const row = await db.prepare("SELECT (SELECT COALESCE(SUM(size), 0) FROM emails) + (SELECT COALESCE(SUM(size), 0) FROM attachments) AS used")
+		.first<{ used: number }>();
+	return row?.used ?? 0;
+}
+
 export async function listEmails(db: D1Database, filters: ListFilters): Promise<EmailSummary[]>
 {
 	const conditions = [filters.trash ? "e.is_deleted = 1" : "e.is_deleted = 0"];

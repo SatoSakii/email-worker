@@ -82,7 +82,7 @@ Toutes les routes demandent `Authorization: Bearer <API_TOKEN>`.
 
 | Méthode | Route | Description |
 | --- | --- | --- |
-| GET | `/emails` | Liste. Filtres : `alias`, `q`, `unread`, `starred`, `trash`, `cursor` |
+| GET | `/emails` | Liste. Filtres : `alias`, `q`, `unread`, `starred`, `trash`, `limit`, `cursor` |
 | GET | `/emails/:id` | Détail d'un mail |
 | GET | `/emails/:id/raw` | Mail brut `.eml` |
 | PATCH | `/emails/:id` | Modifie `is_read`, `is_starred`, `is_deleted` |
@@ -92,9 +92,12 @@ Toutes les routes demandent `Authorization: Bearer <API_TOKEN>`.
 | POST | `/blocklist` | Ajoute une entrée |
 | DELETE | `/blocklist/:id` | Retire une entrée |
 
+`limit` vaut 50 par défaut, 100 au maximum. Le curseur de la page suivante est fourni par `next_cursor`. La suppression définitive demande que le mail soit d'abord dans la corbeille (`is_deleted: true`).
+
 ## Limites
 
 - 25 Mo maximum par mail (limite d'Email Routing)
+- Plafond de 9 Go sur R2 (le free tier va jusqu'à 10 Go). Un mail qui ferait dépasser ce seuil est rejeté avec `mailbox full`. L'usage compte le `.eml` et les pièces jointes, donc une pièce jointe pèse deux fois. Pour libérer de la place, mets des mails à la corbeille puis supprime-les définitivement.
 - Si le parsing échoue, le `.eml` brut reste sauvegardé dans R2
 
 ## Structure
