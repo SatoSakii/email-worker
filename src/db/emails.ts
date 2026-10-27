@@ -79,6 +79,17 @@ export async function insertEmail(db: D1Database, email: NewEmail, attachments: 
 	await db.batch(statements);
 }
 
+export function toFtsQuery(q: string): string | null
+{
+	const terms = q.split(/\s+/).filter((term) => /[\p{L}\p{N}]/u.test(term));
+	if (terms.length === 0)
+	{
+		return null;
+	}
+
+	return terms.map((term) => `"${term.replaceAll("\"", "\"\"")}"`).join(" ");
+}
+
 export async function listEmails(db: D1Database, filters: ListFilters): Promise<EmailSummary[]>
 {
 	const conditions = [filters.trash ? "e.is_deleted = 1" : "e.is_deleted = 0"];
@@ -96,6 +107,16 @@ export async function listEmails(db: D1Database, filters: ListFilters): Promise<
 	if (filters.starred)
 	{
 		conditions.push("e.is_starred = 1");
+	}
+	if (filters.q !== undefined && filters.q.trim() !== "")
+	{
+		const query = toFtsQuery(filters.q);
+		if (query === null)
+		{
+			return [];
+		}
+		conditions.push("e.rowid IN (SELECT rowid FROM emails_fts WHERE emails_fts MATCH ?)");
+		params.push(query);
 	}
 	if (filters.cursor)
 	{

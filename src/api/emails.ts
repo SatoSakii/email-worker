@@ -53,6 +53,7 @@ emailRoutes.get("/", async (c) =>
 
 	const rows = await listEmails(c.env.DB, {
 		alias: c.req.query("alias"),
+		q: c.req.query("q"),
 		unread: c.req.query("unread") === "1",
 		starred: c.req.query("starred") === "1",
 		trash: c.req.query("trash") === "1",
