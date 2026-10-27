@@ -1,0 +1,22 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "email-worker-web",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2026-10-01",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"vars": {
+		"MAIL_DOMAIN": "sato-mail.xyz"
+	},
+	"routes": [
+		{
+			"pattern": "sato-mail.xyz",
+			"custom_domain": true
+		}
+	],
+	"workers_dev": true,
+	"preview_urls": false
+}

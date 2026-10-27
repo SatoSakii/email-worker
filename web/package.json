@@ -9,9 +9,13 @@
 		"typecheck": "tsc --noEmit",
 		"lint": "eslint",
 		"lint:fix": "eslint --fix",
-		"test": "vitest run"
+		"test": "vitest run",
+		"cf:build": "opennextjs-cloudflare build",
+		"cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+		"cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
 	},
 	"dependencies": {
+		"@opennextjs/cloudflare": "^1.20.13",
 		"next": "^16.4.3",
 		"react": "^19.3.1",
 		"react-dom": "^19.3.1"
@@ -25,6 +29,7 @@
 		"eslint-config-next": "^16.4.3",
 		"tailwindcss": "^4.3.3",
 		"typescript": "^5.9.3",
-		"vitest": "^5.0.5"
+		"vitest": "^5.0.5",
+		"wrangler": "^4.154.0"
 	}
 }

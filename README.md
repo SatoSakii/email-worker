@@ -129,6 +129,15 @@ Variables de `web/.env.local` :
 | `MAIL_DOMAIN` | Domaine des alias, par exemple `sato-mail.xyz` |
 | `SESSION_SECRET` | Clé de signature du cookie de session, par exemple `openssl rand -hex 32` |
 
+Déploiement sur Cloudflare avec l'adaptateur OpenNext, depuis `web/` :
+
+```bash
+npm run cf:deploy
+npx wrangler secret bulk secrets.json
+```
+
+`secrets.json` contient `WORKER_URL`, `API_TOKEN` et `SESSION_SECRET` (supprime-le après usage). `MAIL_DOMAIN` est dans `wrangler.jsonc`. Le domaine se branche avec la route `custom_domain` : Cloudflare refuse si le nom a déjà un enregistrement DNS A ou AAAA, il faut d'abord le supprimer.
+
 ## Limites
 
 - 25 Mo maximum par mail (limite d'Email Routing)
