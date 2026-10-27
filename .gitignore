@@ -1,0 +1,14 @@
+# Ignore node modules, build output, and environment files
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.vscode/
+*.eml
+worker-configuration.d.ts
