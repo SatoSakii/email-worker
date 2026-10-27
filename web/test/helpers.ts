@@ -132,8 +132,8 @@ export function summary(overrides: Record<string, unknown> = {}): Record<string,
 {
 	return {
 		id: MAIL_ID,
-		from_address: "alessio.bernard34@gmail.com",
-		from_name: "Alessio",
+		from_address: "sender@example.com",
+		from_name: "Sender",
 		to_address: ALIAS,
 		subject: "secret subject",
 		received_at: 1793127683466,
