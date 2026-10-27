@@ -91,8 +91,43 @@ Toutes les routes demandent `Authorization: Bearer <API_TOKEN>`.
 | GET | `/blocklist` | Liste la blocklist |
 | POST | `/blocklist` | Ajoute une entrée |
 | DELETE | `/blocklist/:id` | Retire une entrée |
+| GET | `/mailboxes/:alias` | Dit si l'alias est verrouillé par un PIN |
+| PUT | `/mailboxes/:alias/lock` | Pose un PIN de 4 à 8 chiffres (`{ "pin": "1234" }`) |
+| POST | `/mailboxes/:alias/unlock` | Vérifie le PIN. 5 échecs bloquent l'alias 15 minutes (429) |
+| DELETE | `/mailboxes/:alias/lock` | Retire le PIN : avec `{ "pin": "1234" }`, ou sans corps pour le forcer |
+
+Pour retirer le PIN d'une boîte dont tu ne connais pas le code :
+
+```bash
+curl -X DELETE -H "Authorization: Bearer $TOKEN" "$URL/mailboxes/$(printf %s 'alias@ton-domaine' | jq -sRr @uri)/lock"
+```
 
 `limit` vaut 50 par défaut, 100 au maximum. Le curseur de la page suivante est fourni par `next_cursor`. La suppression définitive demande que le mail soit d'abord dans la corbeille (`is_deleted: true`).
+
+## Site web
+
+Le dossier `web/` contient un site Next.js (Pages Router, TypeScript, Tailwind 4) pour lire les mails. Tu tapes le début d'une adresse (`test123`) et il ouvre `test123@ton-domaine`.
+
+- Les boîtes sont publiques, sauf celles protégées par un PIN que n'importe quel visiteur peut poser.
+- Le token de l'API reste côté serveur Next.js : le navigateur ne parle qu'aux routes `/api` du site.
+- Le site ne permet ni de gérer la blocklist ni de supprimer définitivement un mail.
+- Raccourcis : `J` `K` naviguer, `S` étoile, `U` lu / non lu, `#` corbeille, `/` chercher, `R` actualiser.
+
+```bash
+cd web
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+Variables de `web/.env.local` :
+
+| Variable | Rôle |
+| --- | --- |
+| `WORKER_URL` | URL du Worker déployé |
+| `API_TOKEN` | Token Bearer du Worker (le même que `wrangler secret put API_TOKEN`) |
+| `MAIL_DOMAIN` | Domaine des alias, par exemple `sato-mail.xyz` |
+| `SESSION_SECRET` | Clé de signature du cookie de session, par exemple `openssl rand -hex 32` |
 
 ## Limites
 
@@ -110,6 +145,7 @@ src/
   db/
 migrations/
 test/
+web/
 wrangler.jsonc
 ```
 

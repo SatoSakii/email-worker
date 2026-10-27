@@ -49,6 +49,7 @@ export async function resetData(): Promise<void>
 		env.DB.prepare("DELETE FROM attachments"),
 		env.DB.prepare("DELETE FROM emails"),
 		env.DB.prepare("DELETE FROM blocklist"),
+		env.DB.prepare("DELETE FROM mailbox_locks"),
 	]);
 
 	const listed = await env.BUCKET.list();

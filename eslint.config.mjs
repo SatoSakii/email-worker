@@ -3,7 +3,7 @@ import importPlugin from "eslint-plugin-import";
 import tseslint from "typescript-eslint";
 
 export default defineConfig([
-	globalIgnores(["node_modules/**", ".wrangler/**", "dist/**", "worker-configuration.d.ts"]),
+	globalIgnores(["node_modules/**", ".wrangler/**", "dist/**", "web/**", "worker-configuration.d.ts"]),
 	...tseslint.configs.recommended,
 	{
 		plugins: { import: importPlugin },
