@@ -1,0 +1,28 @@
+{
+	"name": "email-worker",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "wrangler dev",
+		"deploy": "wrangler deploy",
+		"typecheck": "tsc --noEmit",
+		"lint": "eslint",
+		"lint:fix": "eslint --fix",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"hono": "^4.13.14",
+		"postal-mime": "^4.1.4"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-plugin": "^1.4.8",
+		"@cloudflare/workers-types": "^5.20261027.1",
+		"eslint": "^9.39.5",
+		"eslint-plugin-import": "^2.32.0",
+		"typescript": "^5.9.3",
+		"typescript-eslint": "^8.72.1",
+		"vitest": "^5.0.5",
+		"wrangler": "^4.153.0"
+	}
+}
