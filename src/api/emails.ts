@@ -1,11 +1,13 @@
 import { Hono } from "hono";
-import { getEmail, listAttachments, listEmails } from "../db/emails";
-import type { EmailSummary } from "../db/emails";
+import { deleteEmail, getEmail, listAttachments, listEmails, updateFlags } from "../db/emails";
+import type { EmailSummary, FlagPatch } from "../db/emails";
 import type { AppEnv } from "../types";
+import { readJsonObject } from "./body";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 const CURSOR = /^(\d+):([0-9a-f-]{36})$/;
+const FLAGS = ["is_read", "is_starred", "is_deleted"] as const;
 
 export function toSummary(row: EmailSummary)
 {
@@ -104,4 +106,65 @@ emailRoutes.get("/:id", async (c) =>
 			size: attachment.size,
 		})),
 	});
+});
+
+emailRoutes.patch("/:id", async (c) =>
+{
+	const body = await readJsonObject(c.req.raw);
+	if (!body)
+	{
+		return c.json({ errors: ["invalid request body"] }, 400);
+	}
+
+	const patch: FlagPatch = {};
+	for (const flag of FLAGS)
+	{
+		const value = body[flag];
+		if (value === undefined)
+		{
+			continue;
+		}
+		if (typeof value !== "boolean")
+		{
+			return c.json({ errors: [`${flag} must be a boolean`] }, 400);
+		}
+		patch[flag] = value ? 1 : 0;
+	}
+	if (Object.keys(patch).length === 0)
+	{
+		return c.json({ errors: ["no flag to update"] }, 400);
+	}
+
+	const id = c.req.param("id");
+	if (!await updateFlags(c.env.DB, id, patch))
+	{
+		return c.json({ errors: ["not found"] }, 404);
+	}
+
+	const email = await getEmail(c.env.DB, id);
+	if (!email)
+	{
+		return c.json({ errors: ["not found"] }, 404);
+	}
+
+	return c.json(toSummary(email));
+});
+
+emailRoutes.delete("/:id", async (c) =>
+{
+	const email = await getEmail(c.env.DB, c.req.param("id"));
+	if (!email)
+	{
+		return c.json({ errors: ["not found"] }, 404);
+	}
+	if (email.is_deleted !== 1)
+	{
+		return c.json({ errors: ["email must be in trash"] }, 409);
+	}
+
+	const attachments = await listAttachments(c.env.DB, email.id);
+	await c.env.BUCKET.delete([email.raw_key, ...attachments.map((attachment) => attachment.r2_key)]);
+	await deleteEmail(c.env.DB, email.id);
+
+	return c.body(null, 204);
 });

@@ -127,3 +127,19 @@ export async function getAttachment(db: D1Database, id: string): Promise<Attachm
 {
 	return await db.prepare("SELECT * FROM attachments WHERE id = ?").bind(id).first<AttachmentRow>();
 }
+
+export type FlagPatch = Partial<Pick<EmailRow, "is_read" | "is_starred" | "is_deleted">>;
+
+export async function updateFlags(db: D1Database, id: string, patch: FlagPatch): Promise<boolean>
+{
+	const assignments = Object.keys(patch).map((column) => `${column} = ?`).join(", ");
+	const result = await db.prepare(`UPDATE emails SET ${assignments} WHERE id = ?`)
+		.bind(...Object.values(patch), id)
+		.run();
+	return result.meta.changes > 0;
+}
+
+export async function deleteEmail(db: D1Database, id: string): Promise<void>
+{
+	await db.prepare("DELETE FROM emails WHERE id = ?").bind(id).run();
+}
