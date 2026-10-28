@@ -23,13 +23,13 @@ function Body({ mail }: { mail: MailDetail })
 {
 	const hasText = mail.text_body.trim() !== "";
 	const hasHtml = mail.html_body.trim() !== "";
-	const [view, setView] = useState<"text" | "html">(!hasText && hasHtml ? "html" : "text");
+	const [view, setView] = useState<"text" | "html">(hasHtml ? "html" : "text");
 
 	return (
 		<>
 			{hasText && hasHtml && (
 				<div role="tablist" aria-label="Format du mail" className="mb-5 flex gap-5 border-b border-line">
-					{(["text", "html"] as const).map((tab) => (
+					{(["html", "text"] as const).map((tab) => (
 						<button
 							key={tab}
 							type="button"

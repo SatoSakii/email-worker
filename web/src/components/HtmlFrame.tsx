@@ -28,14 +28,14 @@ function buildDocument(html: string, images: boolean): string
 
 export default function HtmlFrame({ html }: Props)
 {
-	const [images, setImages] = useState(false);
+	const [images, setImages] = useState(true);
 
 	return (
 		<div>
 			<p className="mb-2 flex items-center gap-3 text-sm text-muted">
-				{images ? "Images affichées" : "Images bloquées"}
+				{images ? "Images affichées" : "Images masquées"}
 				<button type="button" onClick={() => setImages(!images)} className="text-rose-deep hover:underline">
-					{images ? "Bloquer" : "Afficher"}
+					{images ? "Masquer" : "Afficher"}
 				</button>
 			</p>
 			<iframe
