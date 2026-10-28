@@ -121,3 +121,13 @@ export async function fetchAttachment(id: string): Promise<Response>
 {
 	return await expectOk(await callWorker(`/attachments/${encodeURIComponent(id)}`));
 }
+
+export async function deleteMail(id: string): Promise<void>
+{
+	await expectOk(await callWorker(`/emails/${id}`, { method: "DELETE" }));
+}
+
+export async function emptyTrash(alias: string): Promise<{ deleted: number; remaining: boolean }>
+{
+	return await workerJson(mailboxPath(alias, "/trash"), { method: "DELETE" });
+}

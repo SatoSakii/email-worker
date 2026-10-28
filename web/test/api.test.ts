@@ -5,6 +5,7 @@ import mail from "@/pages/api/emails/[id]/index";
 import list from "@/pages/api/mailbox/[alias]/emails";
 import mailbox from "@/pages/api/mailbox/[alias]/index";
 import lock from "@/pages/api/mailbox/[alias]/lock";
+import trash from "@/pages/api/mailbox/[alias]/trash";
 import unlock from "@/pages/api/mailbox/[alias]/unlock";
 import { ALIAS, MAILBOX, MAIL_ID, SECRET, callApi, cookieAliases, detail, json, sessionCookie, stubWorker, summary } from "./helpers";
 
@@ -275,14 +276,145 @@ describe("/api/emails/[id]", () =>
 		expect(calls.some((call) => call.method === "PATCH")).toBe(false);
 	});
 
-	it("offers no permanent deletion", async () =>
+	it("deletes a mail for good through the worker", async () =>
 	{
-		const calls = stubWorker({ ...OPEN, ...withMail() });
+		const calls = stubWorker({
+			...OPEN,
+			...withMail(),
+			[`DELETE /emails/${MAIL_ID}`]: () => new Response(null, { status: 204 }),
+		});
 
 		const result = await callApi(mail, { method: "DELETE", query: { id: MAIL_ID } });
 
-		expect(result.status).toBe(405);
+		expect(result.status).toBe(204);
+		expect(calls.filter((call) => call.method === "DELETE")).toHaveLength(1);
+	});
+
+	it("passes on the refusal when the mail is not in the trash", async () =>
+	{
+		stubWorker({
+			...OPEN,
+			...withMail(),
+			[`DELETE /emails/${MAIL_ID}`]: () => json({ errors: ["email must be in trash"] }, 409),
+		});
+
+		const result = await callApi(mail, { method: "DELETE", query: { id: MAIL_ID } });
+
+		expect(result.status).toBe(409);
+	});
+
+	it("refuses to delete a mail of a locked mailbox", async () =>
+	{
+		const calls = stubWorker({
+			...LOCKED,
+			...withMail(),
+			[`DELETE /emails/${MAIL_ID}`]: () => new Response(null, { status: 204 }),
+		});
+
+		const result = await callApi(mail, { method: "DELETE", query: { id: MAIL_ID } });
+
+		expect(result.status).toBe(403);
 		expect(calls.some((call) => call.method === "DELETE")).toBe(false);
+	});
+
+	it("deletes a mail of a locked mailbox with the session", async () =>
+	{
+		stubWorker({
+			...LOCKED,
+			...withMail(),
+			[`DELETE /emails/${MAIL_ID}`]: () => new Response(null, { status: 204 }),
+		});
+
+		const result = await callApi(mail, { method: "DELETE", query: { id: MAIL_ID }, cookie: sessionCookie(ALIAS) });
+
+		expect(result.status).toBe(204);
+	});
+
+	it("returns 404 without calling the worker for a malformed id on delete", async () =>
+	{
+		const calls = stubWorker({});
+
+		const result = await callApi(mail, { method: "DELETE", query: { id: "../x" } });
+
+		expect(result.status).toBe(404);
+		expect(calls).toEqual([]);
+	});
+});
+
+describe("DELETE /api/mailbox/[alias]/trash", () =>
+{
+	const TRASH = `DELETE ${MAILBOX}/trash`;
+
+	it("empties the trash of the alias", async () =>
+	{
+		const calls = stubWorker({ ...OPEN, [TRASH]: () => json({ deleted: 7, remaining: false }) });
+
+		const result = await callApi(trash, { method: "DELETE", query: { alias: "test123" } });
+
+		expect(result.status).toBe(200);
+		expect(result.json).toEqual({ deleted: 7, remaining: false });
+		expect(calls.filter((call) => call.path.endsWith("/trash"))).toHaveLength(1);
+	});
+
+	it("keeps asking the worker until nothing is left and adds up what was deleted", async () =>
+	{
+		const answers = [
+			{ deleted: 50, remaining: true },
+			{ deleted: 50, remaining: true },
+			{ deleted: 12, remaining: false },
+		];
+		const calls = stubWorker({ ...OPEN, [TRASH]: () => json(answers.shift()) });
+
+		const result = await callApi(trash, { method: "DELETE", query: { alias: "test123" } });
+
+		expect(result.json).toEqual({ deleted: 112, remaining: false });
+		expect(calls.filter((call) => call.path.endsWith("/trash"))).toHaveLength(3);
+	});
+
+	it("stops after a safe number of rounds and says there is more", async () =>
+	{
+		const calls = stubWorker({ ...OPEN, [TRASH]: () => json({ deleted: 50, remaining: true }) });
+
+		const result = await callApi(trash, { method: "DELETE", query: { alias: "test123" } });
+
+		expect(result.json).toEqual({ deleted: 50 * 10, remaining: true });
+		expect(calls.filter((call) => call.path.endsWith("/trash"))).toHaveLength(10);
+	});
+
+	it("refuses a locked mailbox without a session and deletes nothing", async () =>
+	{
+		const calls = stubWorker({ ...LOCKED, [TRASH]: () => json({ deleted: 1, remaining: false }) });
+
+		const result = await callApi(trash, { method: "DELETE", query: { alias: "test123" } });
+
+		expect(result.status).toBe(403);
+		expect(calls.some((call) => call.path.endsWith("/trash"))).toBe(false);
+	});
+
+	it("empties the trash of a locked mailbox with the session", async () =>
+	{
+		stubWorker({ ...LOCKED, [TRASH]: () => json({ deleted: 2, remaining: false }) });
+
+		const result = await callApi(trash, { method: "DELETE", query: { alias: "test123" }, cookie: sessionCookie(ALIAS) });
+
+		expect(result.status).toBe(200);
+	});
+
+	it.each(["a b", "", "a@other.com"])("rejects the alias %j without calling the worker", async (alias) =>
+	{
+		const calls = stubWorker({});
+
+		const result = await callApi(trash, { method: "DELETE", query: { alias } });
+
+		expect(result.status).toBe(400);
+		expect(calls).toEqual([]);
+	});
+
+	it("refuses other methods", async () =>
+	{
+		const result = await callApi(trash, { method: "GET", query: { alias: "test123" } });
+
+		expect(result.status).toBe(405);
 	});
 });
 

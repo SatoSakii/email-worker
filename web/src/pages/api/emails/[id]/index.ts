@@ -1,6 +1,6 @@
 import { loadMail, route } from "@/lib/api";
 import type { FlagPatch } from "@/lib/types";
-import { patchMail } from "@/lib/worker";
+import { deleteMail, patchMail } from "@/lib/worker";
 
 const FLAGS = ["is_read", "is_starred", "is_deleted"] as const;
 
@@ -37,6 +37,17 @@ export default route({
 		{
 			res.status(200).json(mail);
 		}
+	},
+	async DELETE(req, res)
+	{
+		const mail = await loadMail(req, res);
+		if (!mail)
+		{
+			return;
+		}
+
+		await deleteMail(mail.id);
+		res.status(204).end();
 	},
 	async PATCH(req, res)
 	{

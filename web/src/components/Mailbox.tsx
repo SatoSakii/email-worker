@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/client";
-import type { FlagPatch, Folder, MailDetail, MailPage, MailSummary, MailboxStatus } from "@/lib/types";
+import type { FlagPatch, Folder, MailDetail, MailPage, MailSummary, MailboxStatus, TrashResult } from "@/lib/types";
+import ConfirmButton from "./ConfirmButton";
 import { LockIcon, RefreshIcon } from "./icons";
 import LockGate from "./LockGate";
 import LockMenu from "./LockMenu";
@@ -51,6 +52,7 @@ export default function Mailbox({ alias, prefix, domain }: Props)
 	const [loading, setLoading] = useState(true);
 	const [reloadKey, setReloadKey] = useState(0);
 	const [refreshing, setRefreshing] = useState(false);
+	const [emptying, setEmptying] = useState(false);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [detail, setDetail] = useState<MailDetail | null>(null);
 	const [detailLoading, setDetailLoading] = useState(false);
@@ -398,6 +400,61 @@ export default function Mailbox({ alias, prefix, domain }: Props)
 		return () => window.removeEventListener("keydown", onKey);
 	}, [mails, selectedId, detail, dialog, openMail, patch, clearSelection, reload]);
 
+	async function deleteForever(id: string)
+	{
+		setMails((current) => current.filter((mail) => mail.id !== id));
+		if (selectedRef.current === id)
+		{
+			clearSelection();
+		}
+
+		try
+		{
+			await api(`/api/emails/${id}`, { method: "DELETE" });
+			setNotice("Mail supprimé.");
+		}
+		catch (error)
+		{
+			if (error instanceof ApiError && error.status === 403)
+			{
+				handleError(error);
+				return;
+			}
+			setNotice("Suppression impossible. La liste a été rechargée.");
+			setReloadKey((key) => key + 1);
+		}
+	}
+
+	async function clearTrash()
+	{
+		setEmptying(true);
+
+		try
+		{
+			const result = await api<TrashResult>(`${base}/trash`, { method: "DELETE" });
+			clearSelection();
+			if (result.remaining)
+			{
+				setNotice(`${result.deleted} mails supprimés, il en reste.`);
+				reload();
+			}
+			else
+			{
+				setMails([]);
+				setCursor(null);
+				setNotice(result.deleted === 1 ? "1 mail supprimé." : `${result.deleted} mails supprimés.`);
+			}
+		}
+		catch (error)
+		{
+			handleError(error);
+		}
+		finally
+		{
+			setEmptying(false);
+		}
+	}
+
 	function changeFolder(next: Folder)
 	{
 		if (next === folder)
@@ -549,6 +606,17 @@ export default function Mailbox({ alias, prefix, domain }: Props)
 						<RefreshIcon className={refreshing ? "animate-spin motion-reduce:animate-none" : ""} />
 					</button>
 				</div>
+				{folder === "trash" && mails.length > 0 && (
+					<div className="flex justify-end border-b border-line px-3 py-1.5">
+						<ConfirmButton
+							label="Vider la corbeille"
+							confirmLabel="Confirmer ?"
+							disabled={emptying}
+							className="rounded-md px-2.5 py-1 text-sm text-cherry transition-colors hover:bg-cherry/10"
+							onConfirm={() => void clearTrash()}
+						/>
+					</div>
+				)}
 				<div className="min-h-0 flex-1 overflow-y-auto">
 					<MailList
 						mails={mails}
@@ -573,6 +641,7 @@ export default function Mailbox({ alias, prefix, domain }: Props)
 					onStar={() => detail && void patch(detail.id, { is_starred: !detail.is_starred })}
 					onRead={() => detail && void patch(detail.id, { is_read: !detail.is_read })}
 					onTrash={() => detail && void patch(detail.id, { is_deleted: !detail.is_deleted })}
+					onDelete={() => detail && void deleteForever(detail.id)}
 				/>
 			</section>
 

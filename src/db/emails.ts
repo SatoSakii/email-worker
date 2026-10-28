@@ -171,3 +171,53 @@ export async function deleteEmail(db: D1Database, id: string): Promise<void>
 {
 	await db.prepare("DELETE FROM emails WHERE id = ?").bind(id).run();
 }
+
+export interface TrashedMail
+{
+	id: string;
+	raw_key: string;
+}
+
+function placeholders(values: unknown[]): string
+{
+	return values.map(() => "?").join(", ");
+}
+
+export async function listTrashed(db: D1Database, alias: string, limit: number): Promise<TrashedMail[]>
+{
+	const { results } = await db.prepare("SELECT id, raw_key FROM emails WHERE to_address = ? AND is_deleted = 1 ORDER BY received_at, id LIMIT ?")
+		.bind(alias, limit)
+		.all<TrashedMail>();
+	return results;
+}
+
+export async function attachmentKeys(db: D1Database, ids: string[]): Promise<string[]>
+{
+	if (ids.length === 0)
+	{
+		return [];
+	}
+
+	const { results } = await db.prepare(`SELECT r2_key FROM attachments WHERE email_id IN (${placeholders(ids)})`)
+		.bind(...ids)
+		.all<{ r2_key: string }>();
+	return results.map((row) => row.r2_key);
+}
+
+export async function deleteEmails(db: D1Database, ids: string[]): Promise<void>
+{
+	if (ids.length === 0)
+	{
+		return;
+	}
+
+	await db.prepare(`DELETE FROM emails WHERE id IN (${placeholders(ids)})`).bind(...ids).run();
+}
+
+export async function hasTrashed(db: D1Database, alias: string): Promise<boolean>
+{
+	const row = await db.prepare("SELECT 1 AS found FROM emails WHERE to_address = ? AND is_deleted = 1 LIMIT 1")
+		.bind(alias)
+		.first();
+	return row !== null;
+}

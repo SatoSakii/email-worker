@@ -52,3 +52,9 @@ export interface FlagPatch
 	is_starred?: boolean;
 	is_deleted?: boolean;
 }
+
+export interface TrashResult
+{
+	deleted: number;
+	remaining: boolean;
+}

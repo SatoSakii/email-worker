@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatFull, formatSize, sender } from "@/lib/client";
 import type { MailDetail } from "@/lib/types";
+import ConfirmButton from "./ConfirmButton";
 import HtmlFrame from "./HtmlFrame";
 import { BackIcon, ClipIcon, DotIcon, RestoreIcon, StarIcon, TrashIcon } from "./icons";
 
@@ -13,6 +14,7 @@ interface Props
 	onStar: () => void;
 	onRead: () => void;
 	onTrash: () => void;
+	onDelete: () => void;
 }
 
 const action = "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted transition-colors hover:bg-tint hover:text-ink";
@@ -52,7 +54,7 @@ function Body({ mail }: { mail: MailDetail })
 	);
 }
 
-export default function Reader({ mail, loading, failed, onBack, onStar, onRead, onTrash }: Props)
+export default function Reader({ mail, loading, failed, onBack, onStar, onRead, onTrash, onDelete }: Props)
 {
 	if (!mail)
 	{
@@ -83,6 +85,17 @@ export default function Reader({ mail, loading, failed, onBack, onStar, onRead, 
 				<button type="button" onClick={onTrash} title="Corbeille (#)" className={`${action} hover:text-cherry`}>
 					{mail.is_deleted ? <RestoreIcon /> : <TrashIcon />} {mail.is_deleted ? "Restaurer" : "Corbeille"}
 				</button>
+				{mail.is_deleted && (
+					<ConfirmButton
+						key={mail.id}
+						label="Supprimer"
+						confirmLabel="Confirmer ?"
+						title="Supprimer définitivement"
+						icon={<TrashIcon />}
+						className={`${action} hover:text-cherry`}
+						onConfirm={onDelete}
+					/>
+				)}
 			</div>
 
 			<div className="flex-1 overflow-y-auto px-5 py-7 md:px-10">

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
+import { attachmentKeys, deleteEmails, hasTrashed, listTrashed } from "../db/emails";
 import { deleteLock, getLock, insertLock } from "../db/locks";
 import type { AppEnv } from "../types";
 import { readJsonObject } from "./body";
@@ -27,7 +28,29 @@ function reply(c: Context<AppEnv>, result: PinResult, onOk: () => Response | Pro
 	return c.json({ errors: ["wrong pin"] }, 401);
 }
 
+const TRASH_BATCH = 50;
+
 export const mailboxRoutes = new Hono<AppEnv>();
+
+mailboxRoutes.delete("/:alias/trash", async (c) =>
+{
+	const alias = readAlias(c);
+	if (!alias)
+	{
+		return c.json({ errors: ["invalid alias"] }, 400);
+	}
+
+	const trashed = await listTrashed(c.env.DB, alias, TRASH_BATCH);
+	if (trashed.length > 0)
+	{
+		const ids = trashed.map((mail) => mail.id);
+		const keys = [...trashed.map((mail) => mail.raw_key), ...await attachmentKeys(c.env.DB, ids)];
+		await c.env.BUCKET.delete(keys);
+		await deleteEmails(c.env.DB, ids);
+	}
+
+	return c.json({ deleted: trashed.length, remaining: await hasTrashed(c.env.DB, alias) });
+});
 
 mailboxRoutes.get("/:alias", async (c) =>
 {
