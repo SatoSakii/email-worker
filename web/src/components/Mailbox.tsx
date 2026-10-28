@@ -8,6 +8,7 @@ import LockGate from "./LockGate";
 import LockMenu from "./LockMenu";
 import MailList from "./MailList";
 import Reader from "./Reader";
+import TotpPanel from "./TotpPanel";
 
 interface Props
 {
@@ -19,9 +20,10 @@ interface Props
 type Gate = "checking" | "locked" | "open" | "error";
 
 const POLL_MS = 30000;
-const FOLDERS: { id: Folder; label: string }[] = [
+const FOLDERS: { id: Folder | "2fa"; label: string }[] = [
 	{ id: "inbox", label: "Reçus" },
 	{ id: "starred", label: "Étoilés" },
+	{ id: "2fa", label: "2FA" },
 	{ id: "trash", label: "Corbeille" },
 ];
 
@@ -45,6 +47,7 @@ export default function Mailbox({ alias, prefix, domain }: Props)
 	const [protectedBox, setProtectedBox] = useState(false);
 	const [retryAfter, setRetryAfter] = useState(0);
 	const [folder, setFolder] = useState<Folder>("inbox");
+	const [totpOpen, setTotpOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [search, setSearch] = useState("");
 	const [mails, setMails] = useState<MailSummary[]>([]);
@@ -332,7 +335,7 @@ export default function Mailbox({ alias, prefix, domain }: Props)
 	{
 		function onKey(event: KeyboardEvent)
 		{
-			if (event.metaKey || event.ctrlKey || event.altKey || dialog)
+			if (event.metaKey || event.ctrlKey || event.altKey || dialog || totpOpen)
 			{
 				return;
 			}
@@ -398,7 +401,7 @@ export default function Mailbox({ alias, prefix, domain }: Props)
 
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [mails, selectedId, detail, dialog, openMail, patch, clearSelection, reload]);
+	}, [mails, selectedId, detail, dialog, totpOpen, openMail, patch, clearSelection, reload]);
 
 	async function deleteForever(id: string)
 	{
@@ -457,6 +460,10 @@ export default function Mailbox({ alias, prefix, domain }: Props)
 
 	function changeFolder(next: Folder)
 	{
+		if (totpOpen)
+		{
+			setTotpOpen(false);
+		}
 		if (next === folder)
 		{
 			return;
@@ -466,6 +473,12 @@ export default function Mailbox({ alias, prefix, domain }: Props)
 		setCursor(null);
 		setLoading(true);
 		clearSelection();
+	}
+
+	function openTotp()
+	{
+		clearSelection();
+		setTotpOpen(true);
 	}
 
 	function loadMore()
@@ -530,7 +543,7 @@ export default function Mailbox({ alias, prefix, domain }: Props)
 		return <LockGate alias={alias} prefix={prefix} retryAfter={retryAfter} onUnlocked={() => setGate("open")} />;
 	}
 
-	const showReader = selectedId !== null;
+	const showReader = selectedId !== null && !totpOpen;
 	const link = "text-sm text-muted transition-colors hover:text-ink";
 
 	return (
@@ -549,17 +562,22 @@ export default function Mailbox({ alias, prefix, domain }: Props)
 				</div>
 
 				<nav aria-label="Dossiers" className="flex gap-1 lg:flex-col">
-					{FOLDERS.map((item) => (
-						<button
-							key={item.id}
-							type="button"
-							onClick={() => changeFolder(item.id)}
-							aria-current={folder === item.id ? "page" : undefined}
-							className={`rounded-md px-3 py-1.5 text-left text-sm transition-colors ${folder === item.id ? `bg-white font-semibold ${item.id === "trash" ? "text-cherry" : "text-rose-deep"}` : "text-muted hover:text-ink"}`}
-						>
-							{item.label}
-						</button>
-					))}
+					{FOLDERS.map((item) =>
+					{
+						const current = item.id === "2fa" ? totpOpen : !totpOpen && folder === item.id;
+
+						return (
+							<button
+								key={item.id}
+								type="button"
+								onClick={() => (item.id === "2fa" ? openTotp() : changeFolder(item.id))}
+								aria-current={current ? "page" : undefined}
+								className={`rounded-md px-3 py-1.5 text-left text-sm transition-colors ${current ? `bg-white font-semibold ${item.id === "trash" ? "text-cherry" : "text-rose-deep"}` : "text-muted hover:text-ink"}`}
+							>
+								{item.label}
+							</button>
+						);
+					})}
 				</nav>
 
 				<div className="flex gap-4 lg:mt-auto lg:flex-col lg:items-start lg:gap-1.5">
@@ -580,70 +598,78 @@ export default function Mailbox({ alias, prefix, domain }: Props)
 				</div>
 			</aside>
 
-			<section aria-label="Liste des mails" className={`${showReader ? "hidden lg:flex" : "flex"} min-h-0 flex-1 flex-col lg:flex-none lg:border-r lg:border-line`}>
-				<label htmlFor="search" className="sr-only">
-					Rechercher
-				</label>
-				<div className="flex items-center border-b border-line transition-colors focus-within:border-rose">
-					<input
-						id="search"
-						ref={searchRef}
-						type="search"
-						value={query}
-						onChange={(event) => setQuery(event.target.value)}
-						placeholder="Rechercher"
-						autoComplete="off"
-						className="min-w-0 flex-1 bg-transparent py-3.5 pl-5 pr-2 text-sm outline-none placeholder:text-faint"
-					/>
-					<button
-						type="button"
-						onClick={reload}
-						disabled={refreshing}
-						aria-label="Actualiser les mails"
-						title="Actualiser (R)"
-						className="mr-2 grid size-9 shrink-0 place-items-center rounded-md text-muted transition-colors hover:bg-tint hover:text-rose-deep disabled:hover:bg-transparent"
-					>
-						<RefreshIcon className={refreshing ? "animate-spin motion-reduce:animate-none" : ""} />
-					</button>
-				</div>
-				{folder === "trash" && mails.length > 0 && (
-					<div className="flex justify-end border-b border-line px-3 py-1.5">
-						<ConfirmButton
-							label="Vider la corbeille"
-							confirmLabel="Confirmer ?"
-							disabled={emptying}
-							className="rounded-md px-2.5 py-1 text-sm text-cherry transition-colors hover:bg-cherry/10"
-							onConfirm={() => void clearTrash()}
-						/>
-					</div>
-				)}
-				<div className="min-h-0 flex-1 overflow-y-auto">
-					<MailList
-						mails={mails}
-						selectedId={selectedId}
-						loading={loading}
-						hasMore={cursor !== null}
-						folder={folder}
-						search={search}
-						alias={alias}
-						onSelect={(id) => void openMail(id)}
-						onMore={loadMore}
-					/>
-				</div>
-			</section>
+			{totpOpen ? (
+				<section aria-label="2FA" className="flex min-h-0 min-w-0 flex-1 flex-col lg:col-span-2">
+					<TotpPanel base={base} onForbidden={handleError} />
+				</section>
+			) : (
+				<>
+					<section aria-label="Liste des mails" className={`${showReader ? "hidden lg:flex" : "flex"} min-h-0 flex-1 flex-col lg:flex-none lg:border-r lg:border-line`}>
+						<label htmlFor="search" className="sr-only">
+						Rechercher
+						</label>
+						<div className="flex items-center border-b border-line transition-colors focus-within:border-rose">
+							<input
+								id="search"
+								ref={searchRef}
+								type="search"
+								value={query}
+								onChange={(event) => setQuery(event.target.value)}
+								placeholder="Rechercher"
+								autoComplete="off"
+								className="min-w-0 flex-1 bg-transparent py-3.5 pl-5 pr-2 text-sm outline-none placeholder:text-faint"
+							/>
+							<button
+								type="button"
+								onClick={reload}
+								disabled={refreshing}
+								aria-label="Actualiser les mails"
+								title="Actualiser (R)"
+								className="mr-2 grid size-9 shrink-0 place-items-center rounded-md text-muted transition-colors hover:bg-tint hover:text-rose-deep disabled:hover:bg-transparent"
+							>
+								<RefreshIcon className={refreshing ? "animate-spin motion-reduce:animate-none" : ""} />
+							</button>
+						</div>
+						{folder === "trash" && mails.length > 0 && (
+							<div className="flex justify-end border-b border-line px-3 py-1.5">
+								<ConfirmButton
+									label="Vider la corbeille"
+									confirmLabel="Confirmer ?"
+									disabled={emptying}
+									className="rounded-md px-2.5 py-1 text-sm text-cherry transition-colors hover:bg-cherry/10"
+									onConfirm={() => void clearTrash()}
+								/>
+							</div>
+						)}
+						<div className="min-h-0 flex-1 overflow-y-auto">
+							<MailList
+								mails={mails}
+								selectedId={selectedId}
+								loading={loading}
+								hasMore={cursor !== null}
+								folder={folder}
+								search={search}
+								alias={alias}
+								onSelect={(id) => void openMail(id)}
+								onMore={loadMore}
+							/>
+						</div>
+					</section>
 
-			<section aria-label="Lecteur" className={`${showReader ? "flex" : "hidden lg:flex"} min-h-0 min-w-0 flex-1 flex-col`}>
-				<Reader
-					mail={detail}
-					loading={detailLoading}
-					failed={detailFailed}
-					onBack={clearSelection}
-					onStar={() => detail && void patch(detail.id, { is_starred: !detail.is_starred })}
-					onRead={() => detail && void patch(detail.id, { is_read: !detail.is_read })}
-					onTrash={() => detail && void patch(detail.id, { is_deleted: !detail.is_deleted })}
-					onDelete={() => detail && void deleteForever(detail.id)}
-				/>
-			</section>
+					<section aria-label="Lecteur" className={`${showReader ? "flex" : "hidden lg:flex"} min-h-0 min-w-0 flex-1 flex-col`}>
+						<Reader
+							mail={detail}
+							loading={detailLoading}
+							failed={detailFailed}
+							onBack={clearSelection}
+							onStar={() => detail && void patch(detail.id, { is_starred: !detail.is_starred })}
+							onRead={() => detail && void patch(detail.id, { is_read: !detail.is_read })}
+							onTrash={() => detail && void patch(detail.id, { is_deleted: !detail.is_deleted })}
+							onDelete={() => detail && void deleteForever(detail.id)}
+						/>
+					</section>
+				</>
+			)}
 
 			{dialog && (
 				<LockMenu

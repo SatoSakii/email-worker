@@ -75,6 +75,17 @@ export function readAlias(req: NextApiRequest, res: NextApiResponse): string | n
 	return alias;
 }
 
+export function readId(req: NextApiRequest, res: NextApiResponse): string | null
+{
+	const id = first(req.query.id) ?? "";
+	if (!MAIL_ID.test(id))
+	{
+		res.status(404).json({ errors: ["not found"] });
+		return null;
+	}
+	return id;
+}
+
 export function readPin(req: NextApiRequest): string | null
 {
 	const body = req.body as { pin?: unknown } | null | undefined;
@@ -110,10 +121,9 @@ export async function requireAccess(req: NextApiRequest, res: NextApiResponse, a
 
 export async function loadMail(req: NextApiRequest, res: NextApiResponse): Promise<MailDetail | null>
 {
-	const id = first(req.query.id) ?? "";
-	if (!MAIL_ID.test(id))
+	const id = readId(req, res);
+	if (!id)
 	{
-		res.status(404).json({ errors: ["not found"] });
 		return null;
 	}
 

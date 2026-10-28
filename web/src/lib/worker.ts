@@ -1,5 +1,5 @@
 import { readConfig } from "./config";
-import type { FlagPatch, Folder, MailDetail, MailPage, MailSummary, Usage } from "./types";
+import type { FlagPatch, Folder, MailDetail, MailPage, MailSummary, NewTotpKey, TotpKey, Usage } from "./types";
 
 export class WorkerError extends Error
 {
@@ -130,6 +130,21 @@ export async function deleteMail(id: string): Promise<void>
 export async function emptyTrash(alias: string): Promise<{ deleted: number; remaining: boolean }>
 {
 	return await workerJson(mailboxPath(alias, "/trash"), { method: "DELETE" });
+}
+
+export async function listTotp(alias: string): Promise<{ keys: TotpKey[] }>
+{
+	return await workerJson(mailboxPath(alias, "/totp"));
+}
+
+export async function addTotp(alias: string, key: NewTotpKey): Promise<TotpKey>
+{
+	return await workerJson(mailboxPath(alias, "/totp"), withJson("POST", key));
+}
+
+export async function removeTotp(alias: string, id: string): Promise<void>
+{
+	await expectOk(await callWorker(mailboxPath(alias, `/totp/${encodeURIComponent(id)}`), { method: "DELETE" }));
 }
 
 export async function getUsage(): Promise<Usage>

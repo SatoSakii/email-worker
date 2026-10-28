@@ -64,3 +64,15 @@ export interface Usage
 	used: number;
 	limit: number;
 }
+
+export interface TotpKey
+{
+	id: string;
+	name: string;
+	secret: string;
+	digits: number;
+	period: number;
+	algorithm: "SHA-1" | "SHA-256" | "SHA-512";
+}
+
+export type NewTotpKey = Omit<TotpKey, "id">;

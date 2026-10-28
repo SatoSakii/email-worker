@@ -96,6 +96,9 @@ Toutes les routes demandent `Authorization: Bearer <API_TOKEN>`.
 | POST | `/mailboxes/:alias/unlock` | Vérifie le PIN. 5 échecs bloquent l'alias 15 minutes (429) |
 | DELETE | `/mailboxes/:alias/lock` | Retire le PIN : avec `{ "pin": "1234" }`, ou sans corps pour le forcer |
 | DELETE | `/mailboxes/:alias/trash` | Vide la corbeille de l'alias, 50 mails par appel (`{ deleted, remaining }`) |
+| GET | `/mailboxes/:alias/totp` | Clés 2FA (TOTP) de l'alias (`{ keys: [{ id, name, secret, digits, period, algorithm }] }`) |
+| POST | `/mailboxes/:alias/totp` | Ajoute une clé : `{ "name": "GitHub", "secret": "BASE32" }`, plus `digits` (6 à 8), `period`, `algorithm` en option. 50 clés max par alias |
+| DELETE | `/mailboxes/:alias/totp/:id` | Supprime une clé |
 | GET | `/usage` | Stockage utilisé sur R2 en octets et plafond de 9 Go (`{ used, limit }`) |
 
 Pour retirer le PIN d'une boîte dont tu ne connais pas le code :
