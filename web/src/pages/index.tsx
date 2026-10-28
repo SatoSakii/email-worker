@@ -6,11 +6,15 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ArrowIcon } from "@/components/icons";
 import { toAlias, toPrefix } from "@/lib/alias";
+import { formatStorage, usagePercent } from "@/lib/client";
 import { readConfig } from "@/lib/config";
+import type { Usage } from "@/lib/types";
+import { getUsage } from "@/lib/worker";
 
 interface Props
 {
 	domain: string;
+	usage: Usage | null;
 }
 
 const STORAGE = "recent-boxes";
@@ -18,8 +22,36 @@ const MAX_RECENT = 6;
 
 export const getServerSideProps: GetServerSideProps<Props> = async () =>
 {
-	return { props: { domain: readConfig().mailDomain } };
+	const usage = await getUsage().catch(() => null);
+	return { props: { domain: readConfig().mailDomain, usage } };
 };
+
+function Storage({ usage }: { usage: Usage })
+{
+	const percent = usagePercent(usage.used, usage.limit);
+	const high = percent >= 85;
+
+	return (
+		<div className="w-full max-w-xs">
+			<p className="mb-2 flex items-baseline justify-between gap-4">
+				<span>Stockage</span>
+				<span className={high ? "font-semibold text-cherry" : "text-ink"}>
+					{formatStorage(usage.used)} <span className="font-normal text-muted">sur {formatStorage(usage.limit)}</span>
+				</span>
+			</p>
+			<div
+				role="progressbar"
+				aria-label="Stockage utilisé"
+				aria-valuemin={0}
+				aria-valuemax={100}
+				aria-valuenow={Math.round(percent)}
+				className="h-1.5 overflow-hidden rounded-full bg-tint"
+			>
+				<div className={`h-full rounded-full ${high ? "bg-cherry" : "bg-rose"}`} style={{ width: `${usage.used > 0 ? Math.max(percent, 1.5) : 0}%` }} />
+			</div>
+		</div>
+	);
+}
 
 function readRecent(): string[]
 {
@@ -34,7 +66,7 @@ function readRecent(): string[]
 	}
 }
 
-export default function Home({ domain }: Props)
+export default function Home({ domain, usage }: Props)
 {
 	const router = useRouter();
 	const [value, setValue] = useState("");
@@ -138,7 +170,10 @@ export default function Home({ domain }: Props)
 					</section>
 				</div>
 
-				<footer className="border-t border-line pt-5 text-sm text-muted">Sans PIN, une boîte est lisible par tous.</footer>
+				<footer className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4 border-t border-line pt-5 text-sm text-muted">
+					{usage ? <Storage usage={usage} /> : <span />}
+					<p>Sans PIN, une boîte est lisible par tous.</p>
+				</footer>
 			</main>
 		</>
 	);

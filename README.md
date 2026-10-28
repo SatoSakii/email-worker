@@ -96,6 +96,7 @@ Toutes les routes demandent `Authorization: Bearer <API_TOKEN>`.
 | POST | `/mailboxes/:alias/unlock` | Vérifie le PIN. 5 échecs bloquent l'alias 15 minutes (429) |
 | DELETE | `/mailboxes/:alias/lock` | Retire le PIN : avec `{ "pin": "1234" }`, ou sans corps pour le forcer |
 | DELETE | `/mailboxes/:alias/trash` | Vide la corbeille de l'alias, 50 mails par appel (`{ deleted, remaining }`) |
+| GET | `/usage` | Stockage utilisé sur R2 en octets et plafond de 9 Go (`{ used, limit }`) |
 
 Pour retirer le PIN d'une boîte dont tu ne connais pas le code :
 
@@ -111,6 +112,7 @@ Le dossier `web/` contient un site Next.js (Pages Router, TypeScript, Tailwind 4
 
 - Les boîtes sont publiques, sauf celles protégées par un PIN que n'importe quel visiteur peut poser.
 - Le token de l'API reste côté serveur Next.js : le navigateur ne parle qu'aux routes `/api` du site.
+- L'accueil affiche le stockage total utilisé par toutes les boîtes, avec une barre sur 9 Go.
 - Le site ne permet pas de gérer la blocklist.
 - Dans la corbeille, « Supprimer » efface un mail pour de bon et « Vider la corbeille » efface tous ceux de la boîte, chacun avec une confirmation en deux clics.
 - Raccourcis : `J` `K` naviguer, `S` étoile, `U` lu / non lu, `#` corbeille, `/` chercher, `R` actualiser.

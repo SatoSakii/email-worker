@@ -101,3 +101,38 @@ export function pinMessage(error: unknown): string
 	}
 	return "Le serveur ne répond pas. Réessaie dans un instant.";
 }
+
+function decimals(value: number, maximumFractionDigits: number): string
+{
+	return new Intl.NumberFormat("fr-FR", { maximumFractionDigits }).format(value);
+}
+
+export function formatStorage(bytes: number): string
+{
+	if (!Number.isFinite(bytes) || bytes <= 0)
+	{
+		return "0 o";
+	}
+	if (bytes < 1000)
+	{
+		return `${bytes} o`;
+	}
+	if (bytes < 1_000_000)
+	{
+		return `${decimals(bytes / 1000, 1)} Ko`;
+	}
+	if (bytes < 1_000_000_000)
+	{
+		return `${decimals(bytes / 1_000_000, 1)} Mo`;
+	}
+	return `${decimals(bytes / 1_000_000_000, 2)} Go`;
+}
+
+export function usagePercent(used: number, limit: number): number
+{
+	if (!Number.isFinite(used) || !Number.isFinite(limit) || limit <= 0)
+	{
+		return 0;
+	}
+	return Math.min(100, Math.max(0, (used / limit) * 100));
+}

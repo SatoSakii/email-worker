@@ -1,5 +1,5 @@
 import { readConfig } from "./config";
-import type { FlagPatch, Folder, MailDetail, MailPage, MailSummary } from "./types";
+import type { FlagPatch, Folder, MailDetail, MailPage, MailSummary, Usage } from "./types";
 
 export class WorkerError extends Error
 {
@@ -130,4 +130,9 @@ export async function deleteMail(id: string): Promise<void>
 export async function emptyTrash(alias: string): Promise<{ deleted: number; remaining: boolean }>
 {
 	return await workerJson(mailboxPath(alias, "/trash"), { method: "DELETE" });
+}
+
+export async function getUsage(): Promise<Usage>
+{
+	return await workerJson("/usage");
 }

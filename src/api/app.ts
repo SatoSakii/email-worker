@@ -5,6 +5,7 @@ import { requireToken } from "./auth";
 import { blocklistRoutes } from "./blocklist";
 import { emailRoutes } from "./emails";
 import { mailboxRoutes } from "./mailboxes";
+import { usageRoutes } from "./usage";
 
 export const app = new Hono<AppEnv>();
 
@@ -12,6 +13,7 @@ app.use("*", requireToken);
 app.route("/emails", emailRoutes);
 app.route("/attachments", attachmentRoutes);
 app.route("/mailboxes", mailboxRoutes);
+app.route("/usage", usageRoutes);
 app.route("/blocklist", blocklistRoutes);
 
 app.notFound((c) =>

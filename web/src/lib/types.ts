@@ -58,3 +58,9 @@ export interface TrashResult
 	deleted: number;
 	remaining: boolean;
 }
+
+export interface Usage
+{
+	used: number;
+	limit: number;
+}

@@ -1,13 +1,13 @@
 import PostalMime from "postal-mime";
 import type { Attachment, Email } from "postal-mime";
 import { storageUsed } from "../db/emails";
+import { MAX_STORAGE } from "../limits";
 import type { Env } from "../types";
 import { isBlocked } from "./blocklist";
 import { saveEmail } from "./store";
 import type { IncomingAttachment } from "./store";
 
 const MAX_SIZE = 25 * 1024 * 1024;
-const MAX_STORAGE = 9_000_000_000;
 
 async function parse(raw: ArrayBuffer): Promise<Email | null>
 {
