@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { ArrowIcon } from "@/components/icons";
+import { ArrowIcon, CrossIcon } from "@/components/icons";
 import { toAlias, toPrefix } from "@/lib/alias";
 import { formatStorage, usagePercent } from "@/lib/client";
 import { readConfig } from "@/lib/config";
@@ -82,6 +82,20 @@ export default function Home({ domain, usage }: Props)
 		return () => window.clearTimeout(timer);
 	}, []);
 
+	function forget(prefix: string)
+	{
+		const next = readRecent().filter((item) => item !== prefix);
+		try
+		{
+			window.localStorage.setItem(STORAGE, JSON.stringify(next));
+		}
+		catch (_error)
+		{
+			return;
+		}
+		setRecent(next);
+	}
+
 	function open(event: FormEvent)
 	{
 		event.preventDefault();
@@ -155,14 +169,23 @@ export default function Home({ domain, usage }: Props)
 						) : (
 							<ul className="mt-3 divide-y divide-line border-y border-line">
 								{recent.map((prefix) => (
-									<li key={prefix}>
-										<Link href={`/m/${encodeURIComponent(prefix)}`} className="group flex items-center justify-between gap-4 py-3">
+									<li key={prefix} className="flex items-center gap-1">
+										<Link href={`/m/${encodeURIComponent(prefix)}`} className="group flex min-w-0 flex-1 items-center justify-between gap-4 py-3">
 											<span className="min-w-0 truncate">
 												<span className="font-semibold">{prefix}</span>
 												<span className="text-muted">@{domain}</span>
 											</span>
 											<ArrowIcon className="shrink-0 text-faint transition group-hover:translate-x-0.5 group-hover:text-rose" />
 										</Link>
+										<button
+											type="button"
+											onClick={() => forget(prefix)}
+											aria-label={`Retirer ${prefix} des boîtes récentes`}
+											title="Retirer"
+											className="grid size-8 shrink-0 place-items-center rounded-md text-faint transition-colors hover:bg-tint hover:text-cherry"
+										>
+											<CrossIcon width={14} height={14} />
+										</button>
 									</li>
 								))}
 							</ul>
